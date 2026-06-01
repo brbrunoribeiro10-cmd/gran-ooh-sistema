@@ -246,6 +246,9 @@ body{font-family:'Inter',sans-serif;background:#f4f5f7;height:100vh;display:flex
   <button class="fbtn" onclick="setFilter('posse','Próprio',this)">Próprios</button>
   <button class="fbtn" onclick="setFilter('posse','Alugado',this)">Alugados</button>
   <div class="fsep"></div>
+  <span class="fl">SEGMENTO</span>
+  <div id="filter-seg" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  <div class="fsep"></div>
   <span class="fl">EMPREENDIMENTO</span>
   <div id="filter-emp" style="display:flex;gap:6px;flex-wrap:wrap"></div>
 </div>
@@ -255,12 +258,17 @@ body{font-family:'Inter',sans-serif;background:#f4f5f7;height:100vh;display:flex
 <div id="page-mapa" class="page active" style="position:relative">
   <div id="map"></div>
   <div id="legend">
-    <div class="leg-title">Legenda</div>
+    <div class="leg-title">Segmentos</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#1ba080"></div>Gran</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#a19e35"></div>Bravante</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#c0364f"></div>Civili</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#38122f"></div>Grupo Sinop</div>
+    <div class="leg-title" style="margin-top:10px">Status (centro do pin)</div>
     <div class="leg-row"><div class="leg-dot" style="background:#059669"></div>Ativo</div>
     <div class="leg-row"><div class="leg-dot" style="background:#d97706"></div>Vencendo</div>
     <div class="leg-row"><div class="leg-dot" style="background:#dc2626"></div>Vencido</div>
-    <div class="leg-row"><div class="leg-dot" style="border:2.5px solid #1d4ed8;background:transparent"></div>Próprio</div>
-    <div class="leg-row"><div class="leg-dot" style="border:2px dashed #7c3aed;background:transparent"></div>Alugado</div>
+    <div class="leg-title" style="margin-top:10px">Posse</div>
+    <div class="leg-row"><div class="leg-dot" style="border:2px dashed #fff;background:transparent;outline:1px solid #999"></div>Alugado (borda tracejada)</div>
   </div>
   <div id="sidebar">
     <div id="sidebar-tabs">
@@ -289,7 +297,7 @@ body{font-family:'Inter',sans-serif;background:#f4f5f7;height:100vh;display:flex
   <div class="dash-grid" id="dash-cards"></div>
   <div class="dash-row">
     <div class="dash-section">
-      <h3>Gasto por Empreendimento</h3>
+      <h3>Gasto por Segmento</h3>
       <div id="dash-emp"></div>
     </div>
     <div class="dash-section">
@@ -337,15 +345,7 @@ body{font-family:'Inter',sans-serif;background:#f4f5f7;height:100vh;display:flex
       <button onclick="addConfigItem('prest')">Adicionar</button>
     </div>
   </div>
-  <div class="config-section">
-    <h3>📣 Campanhas</h3>
-    <p>Gerencie as campanhas disponíveis para seleção no cadastro.</p>
-    <div class="config-list" id="cfg-camp-list"></div>
-    <div class="config-add-row">
-      <input id="cfg-camp-input" placeholder="Nome da campanha..." onkeydown="if(event.key==='Enter')addConfigItem('camp')">
-      <button onclick="addConfigItem('camp')">Adicionar</button>
-    </div>
-  </div>
+
 </div>
 
 <!-- MODAL CADASTRO/EDIÇÃO -->
@@ -362,10 +362,10 @@ body{font-family:'Inter',sans-serif;background:#f4f5f7;height:100vh;display:flex
     <div class="mrow"><label>Endereço *</label><input id="m-addr" placeholder="Ex: Av. Brasil, 1.500 — Sinop, MT"></div>
     <div class="m2">
       <div class="mrow"><label>Bairro</label><input id="m-bairro" placeholder="Centro"></div>
-      <div class="mrow"><label>Empreendimento *</label><select id="m-emp"><option value="">Selecione</option></select></div>
+      <div class="mrow"><label>Segmento *</label><select id="m-seg"><option value="">Selecione</option><option>Gran</option><option>Bravante</option><option>Civili</option><option>Institucional Grupo Sinop</option></select></div>
     </div>
     <div class="m2">
-      <div class="mrow"><label>Campanha Ativa</label><select id="m-camp"><option value="">Selecione</option></select></div>
+      <div class="mrow"><label>Empreendimento *</label><select id="m-emp"><option value="">Selecione</option></select></div>
       <div class="mrow"><label>Empresa Prestadora *</label><select id="m-prest"><option value="">Selecione</option></select></div>
     </div>
     <div class="m2">
@@ -426,12 +426,26 @@ const DRIVE_FOLDER = "https://drive.google.com/drive/folders/1KRPU_Q8QAKdb2xyuwf
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let allData = [];
 let markers = {};
-let filters = { status: 'todos', posse: 'todos', emp: 'todos' };
+let filters = { status: 'todos', posse: 'todos', emp: 'todos', seg: 'todos' };
 let selectedId = null;
 let confirmCallback = null;
 
+// Cores por segmento - baseado nas marcas do Grupo Sinop
+const segmentColor = {
+  'Gran': '#1ba080',                       // Verde oficial Gran
+  'Bravante': '#a19e35',                   // Amarelo-oliva oficial Bravante
+  'Civili': '#c0364f',                     // Vermelho-vinho oficial Civili
+  'Institucional Grupo Sinop': '#38122f'   // Roxo-vinho oficial Grupo Sinop
+};
+const segmentLabel = {
+  'Gran': 'Gran',
+  'Bravante': 'Bravante',
+  'Civili': 'Civili',
+  'Institucional Grupo Sinop': 'Institucional'
+};
+
 // Config lists (localStorage)
-let config = JSON.parse(localStorage.getItem('gran_ooh_config') || '{"emp":["Gran","Savia","Duottori","Grupo Sinop"],"prest":["MT Painéis","Star LED","WH","Interno"],"camp":[]}');
+let config = JSON.parse(localStorage.getItem('gran_ooh_config') || '{"emp":["Savia","Duottori","Gran Hall","Reserve Belo Horizonte","Platini Urban Park","Jardim Curitiba","Sonhalto Videira","Outro"],"prest":["MT Painéis","Star LED","WH","Particular","Interno","Outro"]}');
 function saveConfig() { localStorage.setItem('gran_ooh_config', JSON.stringify(config)); }
 
 // ── MAP ───────────────────────────────────────────────────────────────────────
@@ -470,6 +484,7 @@ function getNome(o) { return g(o, 'Nome do Ponto *', 'Nome do Ponto') || g(o, 'C
 function getAddr(o) { return g(o, 'Endereço *', 'Endereço'); }
 function getPosse(o) { return g(o, 'Posse *', 'Posse'); }
 function getEmp(o) { return g(o, 'Empreendimento *', 'Empreendimento'); }
+function getSegmento(o) { return g(o, 'Segmento *', 'Segmento'); }
 function getLat(o) {
   var v = parseFloat(o['Latitude']);
   if (isNaN(v) || v < -90 || v > 90) return NaN;
@@ -481,15 +496,16 @@ function getLng(o) {
   return v;
 }
 
-function makeIcon(status, posse) {
-  const col = statusColor[status] || '#6b7280';
-  const stroke = posse === 'Alugado' ? '#7c3aed' : '#ffffff';
+function makeIcon(status, posse, segmento) {
+  const segCol = segmentColor[segmento] || '#6b7280';
+  const statusCol = statusColor[status] || '#6b7280';
+  const stroke = posse === 'Alugado' ? '#fff' : segCol;
   const dash = posse === 'Alugado' ? '3 2' : 'none';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">
-    <ellipse cx="17" cy="41" rx="5" ry="2" fill="rgba(0,0,0,0.12)"/>
-    <circle cx="17" cy="17" r="14" fill="${col}" stroke="${stroke}" stroke-width="2.5" stroke-dasharray="${dash}"/>
-    <circle cx="17" cy="17" r="5" fill="rgba(255,255,255,0.4)"/>
-    <line x1="17" y1="31" x2="17" y2="41" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse cx="17" cy="41" rx="5" ry="2" fill="rgba(0,0,0,0.18)"/>
+    <circle cx="17" cy="17" r="14" fill="${segCol}" stroke="${stroke}" stroke-width="2.5" stroke-dasharray="${dash}"/>
+    <circle cx="17" cy="17" r="5" fill="${statusCol}" stroke="#fff" stroke-width="1.2"/>
+    <line x1="17" y1="31" x2="17" y2="41" stroke="${segCol}" stroke-width="2.5" stroke-linecap="round"/>
   </svg>`;
   return L.divIcon({ html: svg, iconSize: [34, 44], iconAnchor: [17, 44], popupAnchor: [0, -46], className: '' });
 }
@@ -565,6 +581,33 @@ function checkAlerts() {
 }
 
 // ── FILTERS ───────────────────────────────────────────────────────────────────
+function buildSegFilters() {
+  const segs = ['Gran', 'Bravante', 'Civili', 'Institucional Grupo Sinop'];
+  const c = document.getElementById('filter-seg');
+  if (!c) return;
+  c.innerHTML = '';
+  const all = document.createElement('button');
+  all.className = 'fbtn active'; all.textContent = 'Todos';
+  all.onclick = () => { filters.seg = 'todos'; c.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active')); all.classList.add('active'); renderAll(); };
+  c.appendChild(all);
+  segs.forEach(seg => {
+    const btn = document.createElement('button');
+    btn.className = 'fbtn';
+    btn.style.borderColor = segmentColor[seg];
+    btn.style.color = segmentColor[seg];
+    btn.textContent = segmentLabel[seg];
+    btn.onclick = () => {
+      filters.seg = seg;
+      c.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      btn.style.background = segmentColor[seg];
+      btn.style.color = '#fff';
+      renderAll();
+    };
+    c.appendChild(btn);
+  });
+}
+
 function buildEmpFilters() {
   const emps = [...new Set(allData.map(o => getEmp(o)).filter(Boolean))];
   const c = document.getElementById('filter-emp');
@@ -590,10 +633,11 @@ function setFilter(type, val, btn) {
 
 function getVisible() {
   return allData.filter(o => {
-    const st = getStatus(o), po = getPosse(o), em = getEmp(o);
+    const st = getStatus(o), po = getPosse(o), em = getEmp(o), sg = getSegmento(o);
     return (filters.status === 'todos' || st === filters.status) &&
            (filters.posse === 'todos' || po === filters.posse) &&
-           (filters.emp === 'todos' || em === filters.emp);
+           (filters.emp === 'todos' || em === filters.emp) &&
+           (filters.seg === 'todos' || sg === filters.seg);
   });
 }
 
@@ -620,7 +664,7 @@ function renderMap(visible) {
   allData.forEach((o, i) => {
     const lat = getLat(o), lng = getLng(o);
     if (isNaN(lat) || isNaN(lng)) return;
-    const m = L.marker([lat, lng], { icon: makeIcon(getStatus(o), getPosse(o)), opacity: visSet.has(i) ? 1 : 0.2 }).addTo(map);
+    const m = L.marker([lat, lng], { icon: makeIcon(getStatus(o), getPosse(o), getSegmento(o)), opacity: visSet.has(i) ? 1 : 0.2 }).addTo(map);
     m.bindPopup(`<div class="lf-popup-name">${getNome(o)}</div><div class="lf-popup-addr">${getAddr(o)}</div><div class="lf-popup-btn" onclick="selectOutdoor(${i})">Ver detalhes →</div>`, { closeButton: false });
     m.on('click', () => selectOutdoor(i));
     markers[i] = m;
@@ -741,20 +785,18 @@ function showPage(page, btn) {
 // ── MODAL ─────────────────────────────────────────────────────────────────────
 function populateSelects() {
   const empSel = document.getElementById('m-emp');
-  const campSel = document.getElementById('m-camp');
   const prestSel = document.getElementById('m-prest');
-  const cur = { emp: empSel.value, camp: campSel.value, prest: prestSel.value };
+  const cur = { emp: empSel.value, prest: prestSel.value };
   empSel.innerHTML = '<option value="">Selecione</option>' + config.emp.map(e => `<option>${e}</option>`).join('');
-  campSel.innerHTML = '<option value="">Selecione</option>' + config.camp.map(e => `<option>${e}</option>`).join('');
   prestSel.innerHTML = '<option value="">Selecione</option>' + config.prest.map(e => `<option>${e}</option>`).join('');
-  empSel.value = cur.emp; campSel.value = cur.camp; prestSel.value = cur.prest;
+  empSel.value = cur.emp; prestSel.value = cur.prest;
 }
 
 function openModal() {
   document.getElementById('modal-title').textContent = 'Adicionar novo outdoor';
   document.getElementById('m-edit-idx').value = '-1';
   ['m-cod','m-nome','m-addr','m-bairro','m-inicio','m-fim','m-vmen','m-vtot','m-dim','m-lat','m-lng','m-foto','m-obs','m-coords'].forEach(id => { var e=document.getElementById(id); if(e) e.value=''; });
-  ['m-posse','m-emp','m-camp','m-prest','m-tipo','m-ilum'].forEach(id => document.getElementById(id).value = '');
+  ['m-posse','m-seg','m-emp','m-prest','m-tipo','m-ilum'].forEach(id => { var e=document.getElementById(id); if(e) e.value=''; });
   populateSelects();
   document.getElementById('modal-bg').style.display = 'flex';
 }
@@ -770,7 +812,7 @@ function openEditModal(idx) {
   document.getElementById('m-bairro').value = o['Bairro / Região']||'';
   document.getElementById('m-posse').value = getPosse(o);
   document.getElementById('m-emp').value = getEmp(o);
-  document.getElementById('m-camp').value = g(o,'Campanha Ativa');
+  document.getElementById('m-seg').value = getSegmento(o);
   document.getElementById('m-prest').value = g(o,'Empresa Prestadora *','Empresa Prestadora');
   const ini = g(o,'Início Veiculação *','Início Veiculação');
   const fim = g(o,'Término Veiculação *','Término Veiculação');
@@ -810,7 +852,7 @@ function saveOutdoor() {
     'Endereço *': addr,
     'Bairro / Região': document.getElementById('m-bairro').value,
     'Empreendimento *': document.getElementById('m-emp').value,
-    'Campanha Ativa': document.getElementById('m-camp').value,
+    'Segmento *': document.getElementById('m-seg').value,
     'Empresa Prestadora *': document.getElementById('m-prest').value,
     'Posse *': document.getElementById('m-posse').value,
     'Início Veiculação *': document.getElementById('m-inicio').value,
@@ -911,6 +953,14 @@ function clearPeriod() {
   renderDashboard();
 }
 
+function parseValue(v) {
+  if (!v && v !== 0) return 0;
+  // Remove R$, espaços e pontos de milhar; converte vírgula para ponto
+  const s = String(v).replace(/R\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
 function renderDashboard() {
   const dIni = document.getElementById('d-inicio').value;
   const dFim = document.getElementById('d-fim').value;
@@ -918,16 +968,19 @@ function renderDashboard() {
   let data = allData;
   if (dIni || dFim) {
     data = allData.filter(o => {
-      const ini = new Date(g(o,'Início Veiculação *','Início Veiculação'));
-      const fim = new Date(g(o,'Término Veiculação *','Término Veiculação'));
-      if (dIni && fim < new Date(dIni)) return false;
-      if (dFim && ini > new Date(dFim)) return false;
+      const iniStr = g(o,'Início Veiculação *','Início Veiculação');
+      const fimStr = g(o,'Término Veiculação *','Término Veiculação');
+      if (!iniStr && !fimStr) return false;
+      const ini = iniStr ? new Date(iniStr) : null;
+      const fim = fimStr ? new Date(fimStr) : null;
+      if (dIni && fim && fim < new Date(dIni)) return false;
+      if (dFim && ini && ini > new Date(dFim)) return false;
       return true;
     });
   }
 
-  const totalGasto = data.reduce((s, o) => s + (parseFloat(o['Valor Total (R$)']) || 0), 0);
-  const totalMensal = data.reduce((s, o) => s + (parseFloat(o['Valor Mensal (R$)']) || 0), 0);
+  const totalGasto = data.reduce((s, o) => s + parseValue(o['Valor Total (R$)']), 0);
+  const totalMensal = data.reduce((s, o) => s + parseValue(o['Valor Mensal (R$)']), 0);
   const ativos = data.filter(o => getStatus(o) === 'ativo').length;
   const vencendo = data.filter(o => getStatus(o) === 'vencendo').length;
 
@@ -938,22 +991,34 @@ function renderDashboard() {
     <div class="dash-card"><div class="dash-card-val" style="color:#1a56db">${fmtCurrency(totalMensal)}</div><div class="dash-card-lbl">Custo mensal total</div></div>
     <div class="dash-card"><div class="dash-card-val" style="color:#d97706">${vencendo}</div><div class="dash-card-lbl">Vencendo em breve</div></div>`;
 
+  // Por segmento (substitui empreendimento)
+  const bySeg = {};
+  data.forEach(o => {
+    const k = segmentLabel[getSegmento(o)] || getSegmento(o) || 'Sem segmento';
+    bySeg[k] = (bySeg[k] || 0) + parseValue(o['Valor Total (R$)']);
+  });
+  const maxSeg = Math.max(...Object.values(bySeg), 1);
+
   // Por empreendimento
   const byEmp = {};
   data.forEach(o => {
     const k = getEmp(o) || 'Não informado';
-    byEmp[k] = (byEmp[k] || 0) + (parseFloat(o['Valor Total (R$)']) || 0);
+    byEmp[k] = (byEmp[k] || 0) + parseValue(o['Valor Total (R$)']);
   });
   const maxEmp = Math.max(...Object.values(byEmp), 1);
-  document.getElementById('dash-emp').innerHTML = Object.entries(byEmp).sort((a,b) => b[1]-a[1]).map(([k,v]) =>
-    `<div class="breakdown-row"><span class="breakdown-label">${k}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v/maxEmp*100}%;background:#1a56db"></div></div><span class="breakdown-val">${fmtCurrency(v)}</span></div>`
-  ).join('') || '<div class="no-data">Sem dados</div>';
+  document.getElementById('dash-emp').innerHTML = Object.entries(bySeg).sort((a,b) => b[1]-a[1]).map(([k,v]) => {
+    const col = Object.values(segmentLabel).indexOf(k) >= 0
+      ? Object.entries(segmentLabel).find(e => e[1] === k)
+      : null;
+    const segColor = col ? segmentColor[col[0]] : '#1a56db';
+    return `<div class="breakdown-row"><span class="breakdown-label">${k}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v/maxSeg*100}%;background:${segColor}"></div></div><span class="breakdown-val">${fmtCurrency(v)}</span></div>`;
+  }).join('') || '<div class="no-data">Sem dados</div>';
 
   // Por prestadora
   const byPrest = {};
   data.forEach(o => {
     const k = g(o,'Empresa Prestadora *','Empresa Prestadora') || 'Não informado';
-    byPrest[k] = (byPrest[k] || 0) + (parseFloat(o['Valor Total (R$)']) || 0);
+    byPrest[k] = (byPrest[k] || 0) + parseValue(o['Valor Total (R$)']);
   });
   const maxPrest = Math.max(...Object.values(byPrest), 1);
   document.getElementById('dash-prest').innerHTML = Object.entries(byPrest).sort((a,b) => b[1]-a[1]).map(([k,v]) =>
@@ -980,7 +1045,7 @@ function renderDashboard() {
 
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 function renderConfig() {
-  ['emp','prest','camp'].forEach(type => {
+  ['emp','prest'].forEach(type => {
     const list = document.getElementById('cfg-' + type + '-list');
     list.innerHTML = config[type].map((item, i) =>
       `<div class="config-item"><span class="config-item-name">${item}</span><button class="config-item-del" onclick="removeConfigItem('${type}',${i})">✕ Remover</button></div>`
