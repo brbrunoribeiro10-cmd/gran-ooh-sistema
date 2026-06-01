@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRAN / Gestão OOH — Sinop, MT</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f4f5f7;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+
+/* TOPBAR */
+#topbar{background:#fff;border-bottom:1px solid #e2e4e8;padding:0 18px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-dot{width:9px;height:9px;border-radius:50%;background:#1a56db}
+.brand-name{font-size:14px;font-weight:700;color:#111}
+.brand-sub{font-weight:400;color:#9ca3af}
+.top-stats{display:flex;gap:20px}
+.tstat{text-align:right}
+.tstat-val{font-size:15px;font-weight:700;color:#111}
+.tstat-lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px}
+
+/* NAV TABS */
+#nav{background:#fff;border-bottom:1px solid #e2e4e8;display:flex;align-items:center;padding:0 18px;gap:2px;flex-shrink:0;z-index:999}
+.ntab{padding:12px 16px;font-size:12px;font-weight:500;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.ntab:hover{color:#1a56db}
+.ntab.active{color:#1a56db;border-bottom-color:#1a56db;font-weight:600}
+.ntab-alert{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#dc2626;color:#fff;font-size:9px;font-weight:700;margin-left:5px}
+
+/* FILTERS */
+#filters{background:#fff;border-bottom:1px solid #e2e4e8;padding:7px 18px;display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+.fl{font-size:10px;color:#9ca3af;margin-right:2px;white-space:nowrap;font-weight:500}
+.fbtn{font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid #e2e4e8;background:#fff;color:#6b7280;cursor:pointer;transition:all .15s}
+.fbtn:hover{border-color:#1a56db;color:#1a56db}
+.fbtn.active{background:#1a56db;border-color:#1a56db;color:#fff}
+.fsep{width:1px;height:20px;background:#e2e4e8;margin:0 4px}
+
+/* PAGES */
+.page{display:none;flex:1;overflow:hidden}
+.page.active{display:flex}
+
+/* MAP PAGE */
+#page-mapa{flex-direction:row}
+#map{flex:1;z-index:0}
+#sidebar{width:300px;background:#fff;border-left:1px solid #e2e4e8;display:flex;flex-direction:column;overflow:hidden;z-index:500}
+#sidebar-tabs{display:flex;border-bottom:1px solid #e2e4e8;flex-shrink:0}
+.stab{flex:1;padding:11px 8px;font-size:11px;font-weight:500;color:#9ca3af;cursor:pointer;text-align:center;border-bottom:2px solid transparent;transition:all .15s}
+.stab.active{color:#1a56db;border-bottom-color:#1a56db}
+#tab-lista{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+#tab-detalhe{flex:1;overflow-y:auto;display:none;flex-direction:column}
+.ooh-item{padding:10px 14px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background .12s;display:flex;gap:10px;align-items:flex-start}
+.ooh-item:hover,.ooh-item.selected{background:#f0f4ff}
+.item-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:12px;font-weight:500;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-addr{font-size:10px;color:#9ca3af;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.tag{font-size:9px;font-weight:500;padding:2px 7px;border-radius:10px}
+.tag-proprio{background:#eff6ff;color:#1d4ed8}
+.tag-alugado{background:#faf5ff;color:#7c3aed}
+.tag-ativo{background:#ecfdf5;color:#065f46}
+.tag-vencendo{background:#fffbeb;color:#92400e}
+.tag-vencido{background:#fef2f2;color:#991b1b}
+.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 14px;padding:9px;border:1.5px dashed #d1d5db;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer;transition:all .15s;font-weight:500}
+.btn-add:hover{border-color:#1a56db;color:#1a56db;background:#f0f4ff}
+#empty-lista{padding:30px;text-align:center;font-size:12px;color:#9ca3af;display:none}
+
+/* DETALHE */
+.det-img{width:100%;height:150px;background:#e5e7eb;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;flex-shrink:0}
+.det-img img{width:100%;height:100%;object-fit:cover}
+.det-badges{position:absolute;top:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap}
+.sbadge{font-size:9px;font-weight:600;padding:3px 8px;border-radius:10px}
+.sb-ativo{background:#ecfdf5;color:#065f46}
+.sb-vencendo{background:#fffbeb;color:#92400e}
+.sb-vencido{background:#fef2f2;color:#991b1b}
+.sb-proprio{background:#eff6ff;color:#1d4ed8}
+.sb-alugado{background:#faf5ff;color:#7c3aed}
+.det-body{padding:14px 16px}
+.det-name{font-size:15px;font-weight:600;color:#111;margin-bottom:3px}
+.det-addr{font-size:11px;color:#6b7280;margin-bottom:10px}
+.det-actions{display:flex;gap:6px;margin-bottom:12px}
+.act-btn{flex:1;padding:7px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #e2e4e8;background:#fff;color:#374151;transition:all .15s;text-align:center}
+.act-btn:hover{background:#f9fafb}
+.act-btn.edit{border-color:#1a56db;color:#1a56db}
+.act-btn.edit:hover{background:#eff6ff}
+.act-btn.del{border-color:#dc2626;color:#dc2626}
+.act-btn.del:hover{background:#fef2f2}
+.divider{height:1px;background:#f3f4f6;margin:10px 0}
+.irow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:8px}
+.ilbl{font-size:11px;color:#9ca3af;flex-shrink:0}
+.ival{font-size:11px;font-weight:500;color:#374151;text-align:right}
+.pbar-wrap{margin-top:12px}
+.pbar-lbl{display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;margin-bottom:5px}
+.pbar-bg{background:#f3f4f6;border-radius:4px;height:5px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:4px}
+.obs-box{margin-top:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:11px;color:#6b7280;line-height:1.5}
+
+/* LEGEND */
+#legend{position:absolute;bottom:20px;left:16px;z-index:500;background:rgba(255,255,255,.97);border:1px solid #e2e4e8;border-radius:8px;padding:12px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.leg-title{font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.leg-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:11px;color:#374151}
+.leg-row:last-child{margin-bottom:0}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ALERT BANNER */
+#alert-banner{display:none;background:#fffbeb;border-bottom:1px solid #fde68a;padding:8px 18px;flex-shrink:0;align-items:center;gap:10px;font-size:12px;color:#92400e}
+#alert-banner strong{font-weight:600}
+
+/* DASHBOARD PAGE */
+#page-dashboard{flex-direction:column;overflow-y:auto;padding:24px;gap:20px;background:#f4f5f7}
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex-shrink:0}
+.dash-card{background:#fff;border:1px solid #e2e4e8;border-radius:10px;padding:16px 18px}
+.dash-card-val{font-size:22px;font-weight:700;color:#111;margin-bottom:2px}
+.dash-card-lbl{font-size:11px;color:#9ca3af}
+.dash-section{background:#fff;border:1px solid #e2e4e8;border-radius:10px;padding:18px}
+.dash-section h3{font-size:13px;font-weight:600;color:#111;margin-bottom:14px}
+.dash-row{display:flex;gap:14px}
+.dash-row .dash-section{flex:1}
+.period-filter{display:flex;gap:8px;margin-bottom:16px;align-items:center}
+.period-filter label{font-size:11px;color:#6b7280;font-weight:500}
+.period-filter input{padding:5px 9px;border:1px solid #e2e4e8;border-radius:6px;font-size:12px;font-family:'Inter',sans-serif;outline:none}
+.period-filter input:focus{border-color:#1a56db}
+.period-filter button{padding:5px 14px;background:#1a56db;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer}
+.breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f3f4f6}
+.breakdown-row:last-child{border-bottom:none}
+.breakdown-label{font-size:12px;color:#374151;font-weight:500}
+.breakdown-val{font-size:12px;font-weight:600;color:#111}
+.breakdown-bar-wrap{flex:1;margin:0 12px;background:#f3f4f6;border-radius:4px;height:5px;overflow:hidden}
+.breakdown-bar{height:100%;border-radius:4px;background:#1a56db}
+.venc-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:11px}
+.venc-row:last-child{border-bottom:none}
+.venc-name{flex:1;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.venc-date{color:#d97706;font-weight:500;white-space:nowrap}
+.venc-days{font-size:10px;color:#9ca3af;white-space:nowrap}
+.no-data{font-size:12px;color:#9ca3af;text-align:center;padding:20px}
+
+/* SETTINGS PAGE */
+#page-config{flex-direction:column;overflow-y:auto;padding:24px;gap:20px;background:#f4f5f7}
+.config-section{background:#fff;border:1px solid #e2e4e8;border-radius:10px;padding:20px}
+.config-section h3{font-size:13px;font-weight:600;color:#111;margin-bottom:4px}
+.config-section p{font-size:11px;color:#9ca3af;margin-bottom:14px}
+.config-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.config-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px}
+.config-item-name{flex:1;font-size:12px;color:#374151;font-weight:500}
+.config-item-del{font-size:11px;color:#dc2626;cursor:pointer;padding:2px 6px;border-radius:4px;border:none;background:none}
+.config-item-del:hover{background:#fef2f2}
+.config-add-row{display:flex;gap:8px}
+.config-add-row input{flex:1;padding:8px 10px;border:1px solid #e2e4e8;border-radius:6px;font-size:12px;font-family:'Inter',sans-serif;outline:none}
+.config-add-row input:focus{border-color:#1a56db}
+.config-add-row button{padding:8px 16px;background:#1a56db;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer}
+.drive-link-box{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-top:8px}
+.drive-link-box span{flex:1;font-size:12px;color:#1d4ed8}
+.drive-link-box a{font-size:11px;font-weight:600;color:#1a56db;text-decoration:none;padding:5px 12px;border:1px solid #1a56db;border-radius:6px}
+.drive-link-box a:hover{background:#1a56db;color:#fff}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:rgba(255,255,255,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#1a56db;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:13px;color:#6b7280}
+
+/* MODAL */
+#modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+#modal{background:#fff;border-radius:12px;width:100%;max-width:460px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto}
+#modal h3{font-size:15px;font-weight:600;color:#111;margin-bottom:4px}
+#modal .msub{font-size:11px;color:#9ca3af;margin-bottom:18px}
+.mrow{margin-bottom:11px}
+.mrow label{display:block;font-size:11px;color:#374151;font-weight:500;margin-bottom:4px}
+.mrow input,.mrow select,.mrow textarea{width:100%;padding:8px 10px;border:1px solid #e2e4e8;border-radius:6px;font-size:12px;font-family:'Inter',sans-serif;color:#111;outline:none;transition:border-color .15s}
+.mrow input:focus,.mrow select:focus,.mrow textarea:focus{border-color:#1a56db}
+.mrow textarea{height:68px;resize:none}
+.m2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.drive-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;font-size:11px;color:#1d4ed8;font-weight:500;cursor:pointer;text-decoration:none;margin-bottom:6px}
+.drive-btn:hover{background:#dbeafe}
+.info-tip{background:#eff6ff;color:#1d4ed8;border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.5;margin-bottom:12px}
+.mbts{display:flex;gap:8px;margin-top:16px}
+.mbtn{flex:1;padding:9px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #e2e4e8;background:#fff;color:#374151;transition:all .15s}
+.mbtn.primary{background:#1a56db;border-color:#1a56db;color:#fff}
+.mbtn:hover{opacity:.85}
+
+/* CONFIRM MODAL */
+#confirm-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9100;display:none;align-items:center;justify-content:center}
+#confirm-box{background:#fff;border-radius:12px;width:340px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
+#confirm-box h3{font-size:15px;font-weight:600;margin-bottom:8px;color:#111}
+#confirm-box p{font-size:12px;color:#6b7280;margin-bottom:20px;line-height:1.5}
+.confirm-btns{display:flex;gap:8px}
+.confirm-btns button{flex:1;padding:10px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.cbtn-cancel{background:#f3f4f6;color:#374151}
+.cbtn-cancel:hover{background:#e5e7eb}
+.cbtn-confirm{background:#dc2626;color:#fff}
+.cbtn-confirm:hover{background:#b91c1c}
+
+/* LEAFLET */
+.leaflet-popup-content-wrapper{border-radius:8px!important;padding:0!important;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)!important}
+.leaflet-popup-content{margin:0!important}
+.leaflet-popup-tip-container{display:none!important}
+.lf-popup-name{font-size:13px;font-weight:600;padding:10px 12px 4px;color:#111}
+.lf-popup-addr{font-size:10px;color:#9ca3af;padding:0 12px 10px}
+.lf-popup-btn{display:block;text-align:center;padding:8px;background:#f0f4ff;color:#1a56db;font-size:11px;font-weight:500;cursor:pointer;border-top:1px solid #e2e4e8}
+.lf-popup-btn:hover{background:#dbeafe}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><p>Carregando dados...</p></div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <span class="brand-name">GRAN <span class="brand-sub">/ Gestão OOH — Sinop, MT</span></span>
+  </div>
+  <div class="top-stats">
+    <div class="tstat"><div class="tstat-val" id="ts-total">—</div><div class="tstat-lbl">Total</div></div>
+    <div class="tstat"><div class="tstat-val" style="color:#059669" id="ts-ativos">—</div><div class="tstat-lbl">Ativos</div></div>
+    <div class="tstat"><div class="tstat-val" style="color:#d97706" id="ts-vencendo">—</div><div class="tstat-lbl">Vencendo</div></div>
+    <div class="tstat"><div class="tstat-val" style="color:#dc2626" id="ts-vencido">—</div><div class="tstat-lbl">Vencidos</div></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <div class="ntab active" onclick="showPage('mapa',this)">🗺️ Mapa</div>
+  <div class="ntab" onclick="showPage('dashboard',this)">📊 Dashboard Financeiro</div>
+  <div class="ntab" onclick="showPage('config',this)">⚙️ Configurações</div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+    <button class="fbtn" style="border-color:#1a56db;color:#1a56db" onclick="reloadData()">↻ Atualizar</button>
+  </div>
+</div>
+
+<!-- ALERT BANNER -->
+<div id="alert-banner"></div>
+
+<!-- FILTERS (mapa only) -->
+<div id="filters">
+  <span class="fl">STATUS</span>
+  <button class="fbtn active" onclick="setFilter('status','todos',this)">Todos</button>
+  <button class="fbtn" onclick="setFilter('status','ativo',this)">Ativos</button>
+  <button class="fbtn" onclick="setFilter('status','vencendo',this)">Vencendo</button>
+  <button class="fbtn" onclick="setFilter('status','vencido',this)">Vencidos</button>
+  <div class="fsep"></div>
+  <span class="fl">POSSE</span>
+  <button class="fbtn active" onclick="setFilter('posse','todos',this)">Todos</button>
+  <button class="fbtn" onclick="setFilter('posse','Próprio',this)">Próprios</button>
+  <button class="fbtn" onclick="setFilter('posse','Alugado',this)">Alugados</button>
+  <div class="fsep"></div>
+  <span class="fl">EMPREENDIMENTO</span>
+  <div id="filter-emp" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+</div>
+
+<!-- PAGES -->
+<!-- MAPA -->
+<div id="page-mapa" class="page active" style="position:relative">
+  <div id="map"></div>
+  <div id="legend">
+    <div class="leg-title">Legenda</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#059669"></div>Ativo</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#d97706"></div>Vencendo</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#dc2626"></div>Vencido</div>
+    <div class="leg-row"><div class="leg-dot" style="border:2.5px solid #1d4ed8;background:transparent"></div>Próprio</div>
+    <div class="leg-row"><div class="leg-dot" style="border:2px dashed #7c3aed;background:transparent"></div>Alugado</div>
+  </div>
+  <div id="sidebar">
+    <div id="sidebar-tabs">
+      <div class="stab active" onclick="switchTab('lista',this)">Lista</div>
+      <div class="stab" id="tab-det-btn" onclick="switchTab('detalhe',this)">Detalhes</div>
+    </div>
+    <div id="tab-lista">
+      <div class="btn-add" onclick="openModal()">+ Adicionar novo outdoor</div>
+      <div id="ooh-list"></div>
+      <div id="empty-lista">Nenhum outdoor com esses filtros.</div>
+    </div>
+    <div id="tab-detalhe"><div id="det-content"><div style="padding:30px;text-align:center;font-size:12px;color:#9ca3af">Selecione um outdoor no mapa ou na lista.</div></div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page">
+  <div class="period-filter">
+    <label>Período:</label>
+    <input type="date" id="d-inicio">
+    <label>até</label>
+    <input type="date" id="d-fim">
+    <button onclick="renderDashboard()">Filtrar</button>
+    <button onclick="clearPeriod()" style="padding:5px 14px;background:#f3f4f6;color:#374151;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer">Limpar</button>
+  </div>
+  <div class="dash-grid" id="dash-cards"></div>
+  <div class="dash-row">
+    <div class="dash-section">
+      <h3>Gasto por Empreendimento</h3>
+      <div id="dash-emp"></div>
+    </div>
+    <div class="dash-section">
+      <h3>Gasto por Prestadora</h3>
+      <div id="dash-prest"></div>
+    </div>
+  </div>
+  <div class="dash-row">
+    <div class="dash-section">
+      <h3>⚠️ Vencimentos Próximos (60 dias)</h3>
+      <div id="dash-venc"></div>
+    </div>
+    <div class="dash-section">
+      <h3>Distribuição por Status</h3>
+      <div id="dash-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG -->
+<div id="page-config" class="page">
+  <div class="config-section">
+    <h3>📁 Pasta de Fotos</h3>
+    <p>Clique no botão abaixo para abrir a pasta do Google Drive onde ficam as fotos dos outdoors.</p>
+    <div class="drive-link-box">
+      <span>📂 Outdoors - FOTOS</span>
+      <a href="https://drive.google.com/drive/folders/1KRPU_Q8QAKdb2xyuwfj4gDZfMBJdeQ0T" target="_blank">Abrir pasta →</a>
+    </div>
+  </div>
+  <div class="config-section">
+    <h3>🏢 Empreendimentos</h3>
+    <p>Gerencie os empreendimentos disponíveis no cadastro de outdoors.</p>
+    <div class="config-list" id="cfg-emp-list"></div>
+    <div class="config-add-row">
+      <input id="cfg-emp-input" placeholder="Nome do empreendimento..." onkeydown="if(event.key==='Enter')addConfigItem('emp')">
+      <button onclick="addConfigItem('emp')">Adicionar</button>
+    </div>
+  </div>
+  <div class="config-section">
+    <h3>🏗️ Empresas Prestadoras</h3>
+    <p>Gerencie as empresas prestadoras de serviço.</p>
+    <div class="config-list" id="cfg-prest-list"></div>
+    <div class="config-add-row">
+      <input id="cfg-prest-input" placeholder="Nome da empresa..." onkeydown="if(event.key==='Enter')addConfigItem('prest')">
+      <button onclick="addConfigItem('prest')">Adicionar</button>
+    </div>
+  </div>
+  <div class="config-section">
+    <h3>📣 Campanhas</h3>
+    <p>Gerencie as campanhas disponíveis para seleção no cadastro.</p>
+    <div class="config-list" id="cfg-camp-list"></div>
+    <div class="config-add-row">
+      <input id="cfg-camp-input" placeholder="Nome da campanha..." onkeydown="if(event.key==='Enter')addConfigItem('camp')">
+      <button onclick="addConfigItem('camp')">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO/EDIÇÃO -->
+<div id="modal-bg">
+  <div id="modal">
+    <h3 id="modal-title">Adicionar novo outdoor</h3>
+    <p class="msub">Preencha os dados. Campos com * são obrigatórios.</p>
+    <input type="hidden" id="m-edit-idx" value="-1">
+    <div class="m2">
+      <div class="mrow"><label>Código *</label><input id="m-cod" placeholder="OOH-01"></div>
+      <div class="mrow"><label>Posse *</label><select id="m-posse"><option value="">Selecione</option><option>Próprio</option><option>Alugado</option></select></div>
+    </div>
+    <div class="mrow"><label>Nome do Ponto *</label><input id="m-nome" placeholder="Ex: Av. Brasil — altura do Fórum"></div>
+    <div class="mrow"><label>Endereço *</label><input id="m-addr" placeholder="Ex: Av. Brasil, 1.500 — Sinop, MT"></div>
+    <div class="m2">
+      <div class="mrow"><label>Bairro</label><input id="m-bairro" placeholder="Centro"></div>
+      <div class="mrow"><label>Empreendimento *</label><select id="m-emp"><option value="">Selecione</option></select></div>
+    </div>
+    <div class="m2">
+      <div class="mrow"><label>Campanha Ativa</label><select id="m-camp"><option value="">Selecione</option></select></div>
+      <div class="mrow"><label>Empresa Prestadora *</label><select id="m-prest"><option value="">Selecione</option></select></div>
+    </div>
+    <div class="m2">
+      <div class="mrow"><label>Início Veiculação *</label><input id="m-inicio" type="date"></div>
+      <div class="mrow"><label>Término Veiculação *</label><input id="m-fim" type="date"></div>
+    </div>
+    <div class="m2">
+      <div class="mrow"><label>Valor Mensal (R$)</label><input id="m-vmen" type="number" placeholder="1500"></div>
+      <div class="mrow"><label>Valor Total (R$)</label><input id="m-vtot" type="number" placeholder="18000"></div>
+    </div>
+    <div class="m2">
+      <div class="mrow"><label>Dimensões</label><input id="m-dim" placeholder="9m × 3m"></div>
+      <div class="mrow"><label>Tipo de Mídia</label><select id="m-tipo"><option value="">Selecione</option><option>Outdoor</option><option>Front Light</option><option>Backlight</option><option>LED</option><option>Totem/TV</option><option>Triedo</option><option>Painel Rodoviário</option><option>Outro</option></select></div>
+    </div>
+    <div class="mrow">
+      <label>Iluminado</label>
+      <select id="m-ilum"><option value="">Selecione</option><option>Sim</option><option>Não</option></select>
+    </div>
+    <div class="mrow">
+      <label>Coordenadas (Latitude, Longitude) *</label>
+      <input id="m-coords" placeholder="-11.860557, -55.531833" oninput="parseCoords(this.value)">
+      <input id="m-lat" type="hidden">
+      <input id="m-lng" type="hidden">
+      <div id="coords-feedback" style="font-size:10px;margin-top:3px;color:#9ca3af">Cole as coordenadas do Google Maps</div>
+    </div>
+    <div class="mrow">
+      <label>Foto</label>
+      <a class="drive-btn" href="https://drive.google.com/drive/folders/1KRPU_Q8QAKdb2xyuwfj4gDZfMBJdeQ0T" target="_blank">📁 Abrir pasta de fotos no Drive →</a>
+      <input id="m-foto" placeholder="Cole aqui o link da foto do Google Drive">
+    </div>
+    <div class="mrow"><label>Observações</label><textarea id="m-obs" placeholder="Informações adicionais..."></textarea></div>
+    <div class="info-tip">💡 <strong>Latitude/Longitude:</strong> abra o Google Maps, clique com botão direito no local do outdoor e copie as coordenadas do topo do menu.</div>
+    <div class="mbts">
+      <button class="mbtn" onclick="closeModal()">Cancelar</button>
+      <button class="mbtn primary" onclick="saveOutdoor()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-bg">
+  <div id="confirm-box">
+    <h3 id="confirm-title">Confirmar ação</h3>
+    <p id="confirm-msg">Tem certeza?</p>
+    <div class="confirm-btns">
+      <button class="cbtn-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="cbtn-confirm" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpn6zjYnL-GiDYg150FsDXKT8UAuV-TISzYZ8wGmAWyV6DnZ6zgklnQvXdKT4b7Kkd/exec";
+const DRIVE_FOLDER = "https://drive.google.com/drive/folders/1KRPU_Q8QAKdb2xyuwfj4gDZfMBJdeQ0T";
+
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let allData = [];
+let markers = {};
+let filters = { status: 'todos', posse: 'todos', emp: 'todos' };
+let selectedId = null;
+let confirmCallback = null;
+
+// Config lists (localStorage)
+let config = JSON.parse(localStorage.getItem('gran_ooh_config') || '{"emp":["Gran","Savia","Duottori","Grupo Sinop"],"prest":["MT Painéis","Star LED","WH","Interno"],"camp":[]}');
+function saveConfig() { localStorage.setItem('gran_ooh_config', JSON.stringify(config)); }
+
+// ── MAP ───────────────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView([-11.862, -55.500], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const statusColor = { ativo: '#059669', vencendo: '#d97706', vencido: '#dc2626' };
+const statusLabel = { ativo: '🟢 Ativo', vencendo: '🟡 Vencendo', vencido: '🔴 Vencido' };
+
+function getStatus(o) {
+  const fim = o['Término Veiculação *'] || o['Término Veiculação'] || '';
+  if (!fim) return 'ativo';
+  const days = Math.ceil((new Date(fim) - new Date()) / 864e5);
+  if (days < 0) return 'vencido';
+  if (days <= 60) return 'vencendo';
+  return 'ativo';
+}
+function getDays(o) {
+  const fim = o['Término Veiculação *'] || o['Término Veiculação'] || '';
+  if (!fim) return null;
+  return Math.ceil((new Date(fim) - new Date()) / 864e5);
+}
+function fmtDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  return isNaN(d) ? v : d.toLocaleDateString('pt-BR');
+}
+function fmtCurrency(v) {
+  if (!v && v !== 0) return '—';
+  const n = parseFloat(String(v).replace(',', '.'));
+  return isNaN(n) ? v : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+}
+function g(o, ...keys) { for (const k of keys) if (o[k] !== undefined && o[k] !== '') return o[k]; return ''; }
+function getNome(o) { return g(o, 'Nome do Ponto *', 'Nome do Ponto') || g(o, 'Código *', 'Código') || 'Sem nome'; }
+function getAddr(o) { return g(o, 'Endereço *', 'Endereço'); }
+function getPosse(o) { return g(o, 'Posse *', 'Posse'); }
+function getEmp(o) { return g(o, 'Empreendimento *', 'Empreendimento'); }
+function getLat(o) { return parseFloat(o['Latitude']); }
+function getLng(o) { return parseFloat(o['Longitude']); }
+
+function makeIcon(status, posse) {
+  const col = statusColor[status] || '#6b7280';
+  const stroke = posse === 'Alugado' ? '#7c3aed' : '#ffffff';
+  const dash = posse === 'Alugado' ? '3 2' : 'none';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">
+    <ellipse cx="17" cy="41" rx="5" ry="2" fill="rgba(0,0,0,0.12)"/>
+    <circle cx="17" cy="17" r="14" fill="${col}" stroke="${stroke}" stroke-width="2.5" stroke-dasharray="${dash}"/>
+    <circle cx="17" cy="17" r="5" fill="rgba(255,255,255,0.4)"/>
+    <line x1="17" y1="31" x2="17" y2="41" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>`;
+  return L.divIcon({ html: svg, iconSize: [34, 44], iconAnchor: [17, 44], popupAnchor: [0, -46], className: '' });
+}
+
+// ── CALLBACK GLOBAL ──────────────────────────────────────────────────────────
+// Definido no escopo global - chamado pelo Apps Script via JSONP
+window.processLoadedData = function(data) {
+  console.log('✓ processLoadedData chamado com', Array.isArray(data) ? data.length : 'inválido', 'registros');
+  if (window.__loadTimer) clearTimeout(window.__loadTimer);
+  if (!Array.isArray(data)) {
+    document.getElementById('loading').innerHTML = '<div style="padding:30px;text-align:center"><p style="color:#dc2626">Resposta inválida</p></div>';
+    return;
+  }
+  allData = data.filter(o => getNome(o) && getNome(o) !== 'Nome do Ponto *');
+  buildEmpFilters();
+  renderAll();
+  checkAlerts();
+  document.getElementById('loading').style.display = 'none';
+};
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+function reloadData() {
+  document.getElementById('loading').innerHTML = '<div class="spinner"></div><p>Carregando dados...</p>';
+  document.getElementById('loading').style.display = 'flex';
+
+  // Remove script anterior
+  const old = document.getElementById('jsonp_loader');
+  if (old) old.remove();
+
+  // Timeout de segurança
+  if (window.__loadTimer) clearTimeout(window.__loadTimer);
+  window.__loadTimer = setTimeout(() => {
+    document.getElementById('loading').innerHTML = `
+      <div style="padding:30px;text-align:center;max-width:400px">
+        <p style="color:#dc2626;font-size:14px;margin-bottom:12px;font-weight:500">Tempo esgotado</p>
+        <p style="color:#6b7280;font-size:12px;margin-bottom:16px">O Apps Script demorou para responder. Verifique sua conexão.</p>
+        <button onclick="reloadData()" style="padding:8px 16px;background:#1a56db;color:#fff;border:none;border-radius:6px;cursor:pointer">↻ Tentar novamente</button>
+      </div>`;
+  }, 20000);
+
+  // Cria script tag JSONP
+  const script = document.createElement('script');
+  script.id = 'jsonp_loader';
+  script.src = APPS_SCRIPT_URL + '?callback=processLoadedData&_=' + Date.now();
+  script.onerror = function() {
+    if (window.__loadTimer) clearTimeout(window.__loadTimer);
+    console.error('Script tag falhou');
+    document.getElementById('loading').innerHTML = `
+      <div style="padding:30px;text-align:center;max-width:400px">
+        <p style="color:#dc2626;font-size:14px;margin-bottom:12px;font-weight:500">Erro ao carregar Apps Script</p>
+        <p style="color:#6b7280;font-size:12px;margin-bottom:16px">Verifique se está publicado como "Qualquer pessoa".</p>
+        <button onclick="reloadData()" style="padding:8px 16px;background:#1a56db;color:#fff;border:none;border-radius:6px;cursor:pointer">↻ Tentar novamente</button>
+      </div>`;
+  };
+  document.head.appendChild(script);
+}
+
+
+// ── ALERTS ────────────────────────────────────────────────────────────────────
+function checkAlerts() {
+  const vencendo = allData.filter(o => getStatus(o) === 'vencendo');
+  const vencido = allData.filter(o => getStatus(o) === 'vencido');
+  const banner = document.getElementById('alert-banner');
+  const alerts = [];
+  if (vencido.length) alerts.push(`<strong>${vencido.length} outdoor(s) vencido(s)</strong> — verifique a aba Dashboard`);
+  if (vencendo.length) alerts.push(`<strong>${vencendo.length} outdoor(s) vencendo em breve</strong> — menos de 60 dias`);
+  if (alerts.length) {
+    banner.style.display = 'flex';
+    banner.innerHTML = '⚠️ &nbsp;' + alerts.join(' &nbsp;|&nbsp; ');
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function buildEmpFilters() {
+  const emps = [...new Set(allData.map(o => getEmp(o)).filter(Boolean))];
+  const c = document.getElementById('filter-emp');
+  c.innerHTML = '';
+  const all = document.createElement('button');
+  all.className = 'fbtn active'; all.textContent = 'Todos';
+  all.onclick = () => { filters.emp = 'todos'; c.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active')); all.classList.add('active'); renderAll(); };
+  c.appendChild(all);
+  emps.forEach(emp => {
+    const btn = document.createElement('button');
+    btn.className = 'fbtn'; btn.textContent = emp;
+    btn.onclick = () => { filters.emp = emp; c.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderAll(); };
+    c.appendChild(btn);
+  });
+}
+
+function setFilter(type, val, btn) {
+  btn.parentElement.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filters[type] = val;
+  renderAll();
+}
+
+function getVisible() {
+  return allData.filter(o => {
+    const st = getStatus(o), po = getPosse(o), em = getEmp(o);
+    return (filters.status === 'todos' || st === filters.status) &&
+           (filters.posse === 'todos' || po === filters.posse) &&
+           (filters.emp === 'todos' || em === filters.emp);
+  });
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll() {
+  const visible = getVisible();
+  renderMap(visible);
+  renderList(visible);
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('ts-total').textContent = allData.length;
+  document.getElementById('ts-ativos').textContent = allData.filter(o => getStatus(o) === 'ativo').length;
+  document.getElementById('ts-vencendo').textContent = allData.filter(o => getStatus(o) === 'vencendo').length;
+  document.getElementById('ts-vencido').textContent = allData.filter(o => getStatus(o) === 'vencido').length;
+}
+
+// ── MAP RENDER ────────────────────────────────────────────────────────────────
+function renderMap(visible) {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  const visSet = new Set(visible.map(o => allData.indexOf(o)));
+  allData.forEach((o, i) => {
+    const lat = getLat(o), lng = getLng(o);
+    if (isNaN(lat) || isNaN(lng)) return;
+    const m = L.marker([lat, lng], { icon: makeIcon(getStatus(o), getPosse(o)), opacity: visSet.has(i) ? 1 : 0.2 }).addTo(map);
+    m.bindPopup(`<div class="lf-popup-name">${getNome(o)}</div><div class="lf-popup-addr">${getAddr(o)}</div><div class="lf-popup-btn" onclick="selectOutdoor(${i})">Ver detalhes →</div>`, { closeButton: false });
+    m.on('click', () => selectOutdoor(i));
+    markers[i] = m;
+  });
+}
+
+// ── LIST RENDER ───────────────────────────────────────────────────────────────
+function renderList(visible) {
+  const list = document.getElementById('ooh-list');
+  const empty = document.getElementById('empty-lista');
+  list.innerHTML = '';
+  if (!visible.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  visible.forEach(o => {
+    const i = allData.indexOf(o);
+    const st = getStatus(o), po = getPosse(o);
+    const el = document.createElement('div');
+    el.className = 'ooh-item' + (selectedId === i ? ' selected' : '');
+    el.dataset.idx = i;
+    el.innerHTML = `<div class="item-dot" style="background:${statusColor[st]}"></div>
+      <div class="item-info">
+        <div class="item-name">${getNome(o)}</div>
+        <div class="item-addr">${getAddr(o) || getEmp(o) || ''}</div>
+        <div class="item-tags">
+          <span class="tag tag-${po === 'Próprio' ? 'proprio' : 'alugado'}">${po || '—'}</span>
+          <span class="tag tag-${st}">${statusLabel[st]}</span>
+          ${getEmp(o) ? `<span class="tag" style="background:#f3f4f6;color:#374151">${getEmp(o)}</span>` : ''}
+        </div>
+      </div>`;
+    el.addEventListener('click', () => selectOutdoor(i));
+    list.appendChild(el);
+  });
+}
+
+// ── DRIVE URL CONVERTER ───────────────────────────────────────────────────────
+function convertDriveUrl(url) {
+  if (!url || !url.startsWith('http')) return null;
+  // Format: https://drive.google.com/file/d/FILE_ID/view
+  const match1 = url.match(/\/file\/d\/([^\/\?]+)/);
+  if (match1) return 'https://drive.google.com/thumbnail?id=' + match1[1] + '&sz=w400';
+  // Format: https://drive.google.com/open?id=FILE_ID
+  const match2 = url.match(/[?&]id=([^&]+)/);
+  if (match2) return 'https://drive.google.com/thumbnail?id=' + match2[1] + '&sz=w400';
+  // Already direct or other format
+  return url;
+}
+
+// ── SELECT OUTDOOR ────────────────────────────────────────────────────────────
+function selectOutdoor(idx) {
+  selectedId = idx;
+  const o = allData[idx];
+  const st = getStatus(o), po = getPosse(o);
+  const days = getDays(o);
+  const col = statusColor[st];
+  const pct = days !== null ? Math.max(0, Math.min(100, Math.round(Math.max(0, days) / 365 * 100))) : 0;
+  const foto = o['Link da Foto'] || '';
+  const fotoUrl = convertDriveUrl(foto);
+  const fotoHtml = fotoUrl
+    ? `<img src="${fotoUrl}" style="cursor:zoom-in" onclick="openLightbox('${fotoUrl}')" title="Clique para ampliar" onerror="this.parentElement.innerHTML='<div style=text-align:center><div style=font-size:36px>🪧</div><div style=font-size:11px;color:#9ca3af;margin-top:6px>Foto não disponível</div></div>'">`
+    : `<div style="text-align:center"><div style="font-size:36px">🪧</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">Sem foto cadastrada</div></div>`;
+
+  document.getElementById('det-content').innerHTML = `
+    <div class="det-img">${fotoHtml}
+      <div class="det-badges">
+        <span class="sbadge sb-${st}">${statusLabel[st]}</span>
+        <span class="sbadge ${po === 'Próprio' ? 'sb-proprio' : 'sb-alugado'}">${po || '—'}</span>
+      </div>
+    </div>
+    <div class="det-body">
+      <div class="det-name">${getNome(o)}</div>
+      <div class="det-addr">${getAddr(o)}${o['Bairro / Região'] ? ' — ' + o['Bairro / Região'] : ''}</div>
+      <div class="det-actions">
+        <div class="act-btn edit" onclick="openEditModal(${idx})">✏️ Editar</div>
+        <div class="act-btn del" onclick="confirmDelete(${idx})">🗑️ Apagar</div>
+      </div>
+      <div class="divider"></div>
+      <div class="irow"><span class="ilbl">Empreendimento</span><span class="ival">${getEmp(o)||'—'}</span></div>
+      <div class="irow"><span class="ilbl">Campanha ativa</span><span class="ival">${g(o,'Campanha Ativa')||'—'}</span></div>
+      <div class="irow"><span class="ilbl">Empresa prestadora</span><span class="ival">${g(o,'Empresa Prestadora *','Empresa Prestadora')||'—'}</span></div>
+      <div class="divider"></div>
+      <div class="irow"><span class="ilbl">Início veiculação</span><span class="ival">${fmtDate(g(o,'Início Veiculação *','Início Veiculação'))}</span></div>
+      <div class="irow"><span class="ilbl">Término veiculação</span><span class="ival" style="color:${col}">${fmtDate(g(o,'Término Veiculação *','Término Veiculação'))}</span></div>
+      <div class="irow"><span class="ilbl">Valor mensal</span><span class="ival">${fmtCurrency(o['Valor Mensal (R$)'])}</span></div>
+      <div class="irow"><span class="ilbl">Valor total</span><span class="ival">${fmtCurrency(o['Valor Total (R$)'])}</span></div>
+      <div class="divider"></div>
+      <div class="irow"><span class="ilbl">Dimensões</span><span class="ival">${o['Dimensões']||'—'}</span></div>
+      <div class="irow"><span class="ilbl">Iluminado</span><span class="ival">${o['Iluminado']||'—'}</span></div>
+      <div class="irow"><span class="ilbl">Tipo de mídia</span><span class="ival">${o['Tipo de Mídia']||'—'}</span></div>
+      ${days !== null ? `<div class="pbar-wrap"><div class="pbar-lbl"><span>Tempo restante</span><span style="color:${col}">${days > 0 ? days + ' dias' : 'Vencido'}</span></div><div class="pbar-bg"><div class="pbar-fill" style="width:${pct}%;background:${col}"></div></div></div>` : ''}
+      ${o['Observações'] ? `<div class="obs-box"><strong style="font-size:10px;color:#6b7280;display:block;margin-bottom:4px">OBSERVAÇÕES</strong>${o['Observações']}</div>` : ''}
+    </div>`;
+
+  switchTab('detalhe', document.getElementById('tab-det-btn'));
+  document.querySelectorAll('.ooh-item').forEach(el => el.classList.toggle('selected', parseInt(el.dataset.idx) === idx));
+  const lat = getLat(o), lng = getLng(o);
+  if (!isNaN(lat) && !isNaN(lng)) { map.setView([lat, lng], 16, { animate: true }); if (markers[idx]) markers[idx].openPopup(); }
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-lista').style.display = tab === 'lista' ? 'flex' : 'none';
+  document.getElementById('tab-detalhe').style.display = tab === 'detalhe' ? 'flex' : 'none';
+}
+
+function showPage(page, btn) {
+  document.querySelectorAll('.ntab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('filters').style.display = page === 'mapa' ? 'flex' : 'none';
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'config') renderConfig();
+  setTimeout(() => map.invalidateSize(), 100);
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function populateSelects() {
+  const empSel = document.getElementById('m-emp');
+  const campSel = document.getElementById('m-camp');
+  const prestSel = document.getElementById('m-prest');
+  const cur = { emp: empSel.value, camp: campSel.value, prest: prestSel.value };
+  empSel.innerHTML = '<option value="">Selecione</option>' + config.emp.map(e => `<option>${e}</option>`).join('');
+  campSel.innerHTML = '<option value="">Selecione</option>' + config.camp.map(e => `<option>${e}</option>`).join('');
+  prestSel.innerHTML = '<option value="">Selecione</option>' + config.prest.map(e => `<option>${e}</option>`).join('');
+  empSel.value = cur.emp; campSel.value = cur.camp; prestSel.value = cur.prest;
+}
+
+function openModal() {
+  document.getElementById('modal-title').textContent = 'Adicionar novo outdoor';
+  document.getElementById('m-edit-idx').value = '-1';
+  ['m-cod','m-nome','m-addr','m-bairro','m-inicio','m-fim','m-vmen','m-vtot','m-dim','m-lat','m-lng','m-foto','m-obs','m-coords'].forEach(id => { var e=document.getElementById(id); if(e) e.value=''; });
+  ['m-posse','m-emp','m-camp','m-prest','m-tipo','m-ilum'].forEach(id => document.getElementById(id).value = '');
+  populateSelects();
+  document.getElementById('modal-bg').style.display = 'flex';
+}
+
+function openEditModal(idx) {
+  const o = allData[idx];
+  document.getElementById('modal-title').textContent = 'Editar outdoor';
+  document.getElementById('m-edit-idx').value = idx;
+  populateSelects();
+  document.getElementById('m-cod').value = g(o,'Código *','Código');
+  document.getElementById('m-nome').value = getNome(o);
+  document.getElementById('m-addr').value = getAddr(o);
+  document.getElementById('m-bairro').value = o['Bairro / Região']||'';
+  document.getElementById('m-posse').value = getPosse(o);
+  document.getElementById('m-emp').value = getEmp(o);
+  document.getElementById('m-camp').value = g(o,'Campanha Ativa');
+  document.getElementById('m-prest').value = g(o,'Empresa Prestadora *','Empresa Prestadora');
+  const ini = g(o,'Início Veiculação *','Início Veiculação');
+  const fim = g(o,'Término Veiculação *','Término Veiculação');
+  document.getElementById('m-inicio').value = ini ? new Date(ini).toISOString().split('T')[0] : '';
+  document.getElementById('m-fim').value = fim ? new Date(fim).toISOString().split('T')[0] : '';
+  document.getElementById('m-vmen').value = o['Valor Mensal (R$)']||'';
+  document.getElementById('m-vtot').value = o['Valor Total (R$)']||'';
+  document.getElementById('m-dim').value = o['Dimensões']||'';
+  document.getElementById('m-tipo').value = o['Tipo de Mídia']||'';
+  document.getElementById('m-ilum').value = o['Iluminado']||'';
+  var elat = o['Latitude']||'';
+  var elng = o['Longitude']||'';
+  document.getElementById('m-lat').value = elat;
+  document.getElementById('m-lng').value = elng;
+  var cf = document.getElementById('m-coords');
+  if (cf) cf.value = (elat && elng) ? (elat + ', ' + elng) : '';
+  document.getElementById('m-foto').value = o['Link da Foto']||'';
+  document.getElementById('m-obs').value = o['Observações']||'';
+  document.getElementById('modal-bg').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('modal-bg').style.display = 'none'; }
+
+function saveOutdoor() {
+  const nome = document.getElementById('m-nome').value.trim();
+  const addr = document.getElementById('m-addr').value.trim();
+  var cf = document.getElementById('m-coords');
+  if (cf && cf.value) parseCoords(cf.value);
+  const lat = parseFloat(document.getElementById('m-lat').value);
+  const lng = parseFloat(document.getElementById('m-lng').value);
+  if (!nome || !addr) { alert('Preencha Nome do Ponto e Endereço.'); return; }
+  if (isNaN(lat) || isNaN(lng)) { alert('Preencha Latitude e Longitude.\n\nDica: clique com botão direito no Google Maps no local do outdoor.'); return; }
+
+  const row = {
+    'Código *': document.getElementById('m-cod').value,
+    'Nome do Ponto *': nome,
+    'Endereço *': addr,
+    'Bairro / Região': document.getElementById('m-bairro').value,
+    'Empreendimento *': document.getElementById('m-emp').value,
+    'Campanha Ativa': document.getElementById('m-camp').value,
+    'Empresa Prestadora *': document.getElementById('m-prest').value,
+    'Posse *': document.getElementById('m-posse').value,
+    'Início Veiculação *': document.getElementById('m-inicio').value,
+    'Término Veiculação *': document.getElementById('m-fim').value,
+    'Valor Mensal (R$)': document.getElementById('m-vmen').value,
+    'Valor Total (R$)': document.getElementById('m-vtot').value,
+    'Dimensões': document.getElementById('m-dim').value,
+    'Iluminado': document.getElementById('m-ilum').value,
+    'Tipo de Mídia': document.getElementById('m-tipo').value,
+    'Latitude': lat, 'Longitude': lng,
+    'Link da Foto': document.getElementById('m-foto').value,
+    'Observações': document.getElementById('m-obs').value,
+  };
+
+  const editIdx = parseInt(document.getElementById('m-edit-idx').value);
+  if (editIdx >= 0) {
+    allData[editIdx] = { ...allData[editIdx], ...row };
+  } else {
+    allData.push(row);
+  }
+
+  closeModal();
+  buildEmpFilters();
+  renderAll();
+  checkAlerts();
+  if (editIdx >= 0) selectOutdoor(editIdx);
+  else selectOutdoor(allData.length - 1);
+
+  // Envia para planilha
+  postToSheet(editIdx >= 0
+    ? { action: 'update', idx: editIdx, row }
+    : { action: 'append', row }
+  );
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+function confirmDelete(idx) {
+  const nome = getNome(allData[idx]);
+  openConfirm(
+    '🗑️ Apagar outdoor',
+    `Tem certeza que deseja apagar "${nome}"?\n\nEssa ação também removerá da planilha e não pode ser desfeita.`,
+    () => deleteOutdoor(idx)
+  );
+}
+
+function deleteOutdoor(idx) {
+  postToSheet({ action: 'delete', idx });
+  allData.splice(idx, 1);
+  selectedId = null;
+  document.getElementById('det-content').innerHTML = '<div style="padding:30px;text-align:center;font-size:12px;color:#9ca3af">Selecione um outdoor no mapa ou na lista.</div>';
+  switchTab('lista', document.querySelector('.stab'));
+  buildEmpFilters();
+  renderAll();
+  checkAlerts();
+}
+
+// ── CONFIRM MODAL ─────────────────────────────────────────────────────────────
+function openConfirm(title, msg, cb) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCallback = cb;
+  document.getElementById('confirm-bg').style.display = 'flex';
+}
+function closeConfirm() { document.getElementById('confirm-bg').style.display = 'none'; confirmCallback = null; }
+document.getElementById('confirm-ok').onclick = () => { if (confirmCallback) confirmCallback(); closeConfirm(); };
+
+// ── POST TO SHEET (JSONP write) ───────────────────────────────────────────────
+window.postCallback = function(result) {
+  console.log('✓ Planilha atualizada:', result);
+};
+
+function postToSheet(payload) {
+  return new Promise((resolve) => {
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const url = APPS_SCRIPT_URL + '?action=write&data=' + encoded + '&callback=postCallback&_=' + Date.now();
+    
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = () => { script.remove(); resolve(); };
+    script.onerror = () => { 
+      console.warn('Falha ao salvar — dado salvo apenas localmente'); 
+      script.remove(); 
+      resolve(); 
+    };
+    document.head.appendChild(script);
+    
+    setTimeout(() => { 
+      if (document.head.contains(script)) script.remove(); 
+      resolve();
+    }, 10000);
+  });
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function clearPeriod() {
+  document.getElementById('d-inicio').value = '';
+  document.getElementById('d-fim').value = '';
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const dIni = document.getElementById('d-inicio').value;
+  const dFim = document.getElementById('d-fim').value;
+
+  let data = allData;
+  if (dIni || dFim) {
+    data = allData.filter(o => {
+      const ini = new Date(g(o,'Início Veiculação *','Início Veiculação'));
+      const fim = new Date(g(o,'Término Veiculação *','Término Veiculação'));
+      if (dIni && fim < new Date(dIni)) return false;
+      if (dFim && ini > new Date(dFim)) return false;
+      return true;
+    });
+  }
+
+  const totalGasto = data.reduce((s, o) => s + (parseFloat(o['Valor Total (R$)']) || 0), 0);
+  const totalMensal = data.reduce((s, o) => s + (parseFloat(o['Valor Mensal (R$)']) || 0), 0);
+  const ativos = data.filter(o => getStatus(o) === 'ativo').length;
+  const vencendo = data.filter(o => getStatus(o) === 'vencendo').length;
+
+  // Cards
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="dash-card"><div class="dash-card-val">${data.length}</div><div class="dash-card-lbl">Outdoors no período</div></div>
+    <div class="dash-card"><div class="dash-card-val" style="color:#059669">${fmtCurrency(totalGasto)}</div><div class="dash-card-lbl">Total contratado</div></div>
+    <div class="dash-card"><div class="dash-card-val" style="color:#1a56db">${fmtCurrency(totalMensal)}</div><div class="dash-card-lbl">Custo mensal total</div></div>
+    <div class="dash-card"><div class="dash-card-val" style="color:#d97706">${vencendo}</div><div class="dash-card-lbl">Vencendo em breve</div></div>`;
+
+  // Por empreendimento
+  const byEmp = {};
+  data.forEach(o => {
+    const k = getEmp(o) || 'Não informado';
+    byEmp[k] = (byEmp[k] || 0) + (parseFloat(o['Valor Total (R$)']) || 0);
+  });
+  const maxEmp = Math.max(...Object.values(byEmp), 1);
+  document.getElementById('dash-emp').innerHTML = Object.entries(byEmp).sort((a,b) => b[1]-a[1]).map(([k,v]) =>
+    `<div class="breakdown-row"><span class="breakdown-label">${k}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v/maxEmp*100}%;background:#1a56db"></div></div><span class="breakdown-val">${fmtCurrency(v)}</span></div>`
+  ).join('') || '<div class="no-data">Sem dados</div>';
+
+  // Por prestadora
+  const byPrest = {};
+  data.forEach(o => {
+    const k = g(o,'Empresa Prestadora *','Empresa Prestadora') || 'Não informado';
+    byPrest[k] = (byPrest[k] || 0) + (parseFloat(o['Valor Total (R$)']) || 0);
+  });
+  const maxPrest = Math.max(...Object.values(byPrest), 1);
+  document.getElementById('dash-prest').innerHTML = Object.entries(byPrest).sort((a,b) => b[1]-a[1]).map(([k,v]) =>
+    `<div class="breakdown-row"><span class="breakdown-label">${k}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v/maxPrest*100}%;background:#7c3aed"></div></div><span class="breakdown-val">${fmtCurrency(v)}</span></div>`
+  ).join('') || '<div class="no-data">Sem dados</div>';
+
+  // Vencimentos próximos
+  const proximos = allData
+    .map(o => ({ o, days: getDays(o) }))
+    .filter(({ days }) => days !== null && days >= 0 && days <= 60)
+    .sort((a, b) => a.days - b.days);
+  document.getElementById('dash-venc').innerHTML = proximos.length
+    ? proximos.map(({ o, days }) => `<div class="venc-row"><div class="item-dot" style="background:${statusColor[getStatus(o)]};flex-shrink:0"></div><span class="venc-name">${getNome(o)}</span><span class="venc-date">${fmtDate(g(o,'Término Veiculação *','Término Veiculação'))}</span><span class="venc-days">${days}d</span></div>`).join('')
+    : '<div class="no-data">Nenhum vencimento nos próximos 60 dias 🎉</div>';
+
+  // Status
+  const sts = { ativo: 0, vencendo: 0, vencido: 0 };
+  data.forEach(o => sts[getStatus(o)]++);
+  const total = data.length || 1;
+  document.getElementById('dash-status').innerHTML = Object.entries(sts).map(([k, v]) =>
+    `<div class="breakdown-row"><span class="breakdown-label">${statusLabel[k]}</span><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${v/total*100}%;background:${statusColor[k]}"></div></div><span class="breakdown-val">${v}</span></div>`
+  ).join('');
+}
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+function renderConfig() {
+  ['emp','prest','camp'].forEach(type => {
+    const list = document.getElementById('cfg-' + type + '-list');
+    list.innerHTML = config[type].map((item, i) =>
+      `<div class="config-item"><span class="config-item-name">${item}</span><button class="config-item-del" onclick="removeConfigItem('${type}',${i})">✕ Remover</button></div>`
+    ).join('') || '<div style="font-size:11px;color:#9ca3af;padding:4px">Nenhum item cadastrado.</div>';
+  });
+}
+
+function addConfigItem(type) {
+  const input = document.getElementById('cfg-' + type + '-input');
+  const val = input.value.trim();
+  if (!val) return;
+  if (config[type].includes(val)) { alert('Já existe um item com esse nome.'); return; }
+  config[type].push(val);
+  saveConfig();
+  input.value = '';
+  renderConfig();
+}
+
+function removeConfigItem(type, idx) {
+  openConfirm('Remover item', `Deseja remover "${config[type][idx]}" da lista?`, () => {
+    config[type].splice(idx, 1);
+    saveConfig();
+    renderConfig();
+  });
+}
+
+
+function parseCoords(value) {
+  var fb = document.getElementById('coords-feedback');
+  var latI = document.getElementById('m-lat');
+  var lngI = document.getElementById('m-lng');
+  if (!value || !value.trim()) {
+    fb.textContent = 'Cole as coordenadas do Google Maps';
+    fb.style.color = '#9ca3af';
+    latI.value = ''; lngI.value = '';
+    return;
+  }
+  var parts = value.replace(/[;\s]+/g, ',').replace(/,+/g, ',').split(',').map(function(p){return p.trim();}).filter(Boolean);
+  if (parts.length !== 2) {
+    fb.textContent = '⚠️ Formato inválido';
+    fb.style.color = '#dc2626';
+    latI.value = ''; lngI.value = '';
+    return;
+  }
+  var lat = parseFloat(parts[0]);
+  var lng = parseFloat(parts[1]);
+  if (isNaN(lat) || isNaN(lng)) {
+    fb.textContent = '⚠️ Coordenadas inválidas';
+    fb.style.color = '#dc2626';
+    latI.value = ''; lngI.value = '';
+    return;
+  }
+  latI.value = lat; lngI.value = lng;
+  fb.textContent = '✓ Lat ' + lat + ' / Lng ' + lng;
+  fb.style.color = '#059669';
+}
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+function openLightbox(url) {
+  let lb = document.getElementById('__lightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = '__lightbox';
+    lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px';
+    lb.onclick = function() { lb.style.display = 'none'; };
+    var img = document.createElement('img');
+    img.id = '__lightbox_img';
+    img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain';
+    var close = document.createElement('div');
+    close.style.cssText = 'position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer';
+    close.textContent = '✕';
+    close.onclick = function(e) { e.stopPropagation(); lb.style.display = 'none'; };
+    lb.appendChild(img);
+    lb.appendChild(close);
+    document.body.appendChild(lb);
+  }
+  document.getElementById('__lightbox_img').src = url;
+  lb.style.display = 'flex';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+reloadData();
+</script>
+</body>
+</html>
