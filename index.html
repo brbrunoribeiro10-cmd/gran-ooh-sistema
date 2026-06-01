@@ -470,8 +470,16 @@ function getNome(o) { return g(o, 'Nome do Ponto *', 'Nome do Ponto') || g(o, 'C
 function getAddr(o) { return g(o, 'Endereço *', 'Endereço'); }
 function getPosse(o) { return g(o, 'Posse *', 'Posse'); }
 function getEmp(o) { return g(o, 'Empreendimento *', 'Empreendimento'); }
-function getLat(o) { return parseFloat(o['Latitude']); }
-function getLng(o) { return parseFloat(o['Longitude']); }
+function getLat(o) {
+  var v = parseFloat(o['Latitude']);
+  if (isNaN(v) || v < -90 || v > 90) return NaN;
+  return v;
+}
+function getLng(o) {
+  var v = parseFloat(o['Longitude']);
+  if (isNaN(v) || v < -180 || v > 180) return NaN;
+  return v;
+}
 
 function makeIcon(status, posse) {
   const col = statusColor[status] || '#6b7280';
